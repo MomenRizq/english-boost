@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>English Boost — لوحة الأدمن</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f4ef;--ink:#1d1b26;--mut:#6b6878;--line:#e6e2d9;--acc:#4c3bcf;--ok:#2b8a3e;--bad:#e03131;--soft:#efeafd}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:'Cairo',sans-serif}
+header{background:#1d1b26;color:#fff}.hw{max-width:1100px;margin:auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.logo{font-weight:800;font-size:18px}.logo b{background:#ff6b35;border-radius:8px;padding:0 8px;font-family:Inter}
+main{max-width:1100px;margin:auto;padding:22px 16px 60px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+input{font:inherit;border:2px solid var(--line);border-radius:10px;padding:9px 12px;width:100%}
+input:focus{outline:none;border-color:var(--acc)}
+.btn{border:0;border-radius:10px;padding:9px 16px;font:inherit;font-weight:700;background:var(--acc);color:#fff;cursor:pointer}
+.btn.sec{background:var(--soft);color:var(--acc)}.btn.bad{background:#fff0f0;color:var(--bad)}.btn.ghost{background:transparent;border:1px solid #ffffff55;color:#fff}
+.btn:disabled{opacity:.5}
+.grid{display:grid;gap:12px;grid-template-columns:1fr 1fr 1fr auto;align-items:end}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+label{font-weight:700;font-size:13.5px;display:block;margin-bottom:4px}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:start;vertical-align:middle}
+th{background:#faf8f3;font-size:13px;color:var(--mut)}
+.en{font-family:Inter}.mut{color:var(--mut)}
+.msg{margin-top:10px;padding:9px 12px;border-radius:10px;display:none}.msg.on{display:block}
+.msg.ok{background:#ebfbee;color:#1b5e20}.msg.no{background:#fff0f0;color:#9b1c1c}
+.bar{height:6px;background:#ece8df;border-radius:6px;overflow:hidden;min-width:70px}.bar i{display:block;height:100%;background:var(--acc)}
+.acts{display:flex;gap:6px;flex-wrap:wrap}.acts .btn{padding:6px 10px;font-size:13px}
+#login{max-width:380px;margin:60px auto}
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;padding:16px;z-index:9}
+.modal.on{display:flex}.modal .card{width:100%;max-width:400px}
+</style>
+</head>
+<body>
+<header><div class="hw"><div class="logo"><b>EN</b> English Boost — الأدمن</div><span style="flex:1"></span><a class="btn ghost" href="./">الموقع ↗</a><button class="btn ghost" id="out" style="display:none">خروج</button></div></header>
+<main>
+ <div id="login" class="card">
+  <h2 style="margin-top:0">دخول الأدمن</h2>
+  <form id="lf"><label>كلمة مرور الأدمن</label><input type="password" id="apw" autocomplete="current-password" required><div style="height:12px"></div><button class="btn" style="width:100%">دخول</button></form>
+  <div class="msg" id="lmsg"></div>
+ </div>
+ <div id="panel" style="display:none">
+  <h1 style="margin:0 0 4px">اليوزرز</h1><p class="mut" style="margin-top:0">كل يوزر بيدخل باسمه وكلمة المرور، وتقدمه محفوظ على السيرفر لوحده.</p>
+  <div class="card"><h3 style="margin-top:0">➕ إضافة يوزر</h3>
+   <form id="af" class="grid">
+    <div><label>الاسم الظاهر</label><input id="nn" placeholder="مثال: أحمد"></div>
+    <div><label>اسم المستخدم (للدخول)</label><input id="nu" class="en" dir="ltr" placeholder="ahmed" required pattern="[A-Za-z0-9_.\-]{3,30}"></div>
+    <div><label>كلمة المرور</label><input id="np" class="en" dir="ltr" required minlength="4"></div>
+    <div><button class="btn">إضافة</button></div>
+   </form><div class="msg" id="amsg"></div>
+  </div>
+  <div class="card" style="margin-top:14px;overflow-x:auto"><table><thead><tr><th>الاسم</th><th>اسم المستخدم</th><th>عبارات محفوظة</th><th>مهام الخطة</th><th>امتحانات (أفضل)</th><th>أخطاء</th><th>آخر نشاط</th><th></th></tr></thead><tbody id="tb"></tbody></table><div id="empty" class="mut" style="text-align:center;padding:24px;display:none">لا يوجد يوزرز بعد — أضف أول واحد من فوق.</div></div>
+ </div>
+</main>
+<div class="modal" id="rpm"><div class="card" style="max-width:980px;max-height:92vh;overflow:auto;background:#f6f4ef"><div style="display:flex;justify-content:space-between;align-items:center"><h2 id="rpt" style="margin:0"></h2><button class="btn sec" onclick="$('#rpm').classList.remove('on')">إغلاق ✕</button></div><div id="rpb" style="margin-top:12px"></div></div></div>
+<div class="modal" id="md"><div class="card"><h3 id="mt" style="margin-top:0"></h3><div id="mb"></div><div style="display:flex;gap:8px;margin-top:14px"><button class="btn" id="mok">تأكيد</button><button class="btn sec" id="mno">إلغاء</button></div></div></div>
+<script src="data.js"></script>
+<script src="report.js"></script>
+<script>
+const TOTAL_PHRASES=PHRASES.length,TOTAL_TASKS=PLAN.reduce((s,d)=>s+d.tasks.length,0);
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let TOKEN=null;try{TOKEN=sessionStorage.getItem('eb_admin')}catch(e){}
+async function api(path,opt={}){const r=await fetch('api/'+path,{method:opt.method||'GET',headers:Object.assign({'Content-Type':'application/json'},TOKEN?{Authorization:'Bearer '+TOKEN}:{}),body:opt.body?JSON.stringify(opt.body):undefined});
+ let j={};try{j=await r.json()}catch(e){}if(r.status===401&&path!=='admin/login'){logout();throw new Error('انتهت الجلسة')}if(!r.ok)throw new Error(j.error||('خطأ '+r.status));return j}
+function msg(id,t,ok){const m=$(id);m.textContent=t;m.className='msg on '+(ok?'ok':'no');clearTimeout(m._t);m._t=setTimeout(()=>m.classList.remove('on'),4000)}
+function setTok(t){TOKEN=t;try{t?sessionStorage.setItem('eb_admin',t):sessionStorage.removeItem('eb_admin')}catch(e){}}
+function logout(){setTok(null);$('#panel').style.display='none';$('#login').style.display='block';$('#out').style.display='none'}
+$('#out').onclick=logout;
+$('#lf').onsubmit=async e=>{e.preventDefault();try{const j=await api('admin/login',{method:'POST',body:{password:$('#apw').value}});setTok(j.token);$('#apw').value='';show()}catch(err){msg('#lmsg',err.message)}};
+async function show(){$('#login').style.display='none';$('#panel').style.display='block';$('#out').style.display='inline-block';await load()}
+const ago=t=>{if(!t)return '—';const m=Math.round((Date.now()-t)/60000);if(m<1)return 'الآن';if(m<60)return 'منذ '+m+' د';const h=Math.round(m/60);if(h<24)return 'منذ '+h+' س';return 'منذ '+Math.round(h/24)+' يوم'};
+async function load(){try{const {users}=await api('admin/users');$('#empty').style.display=users.length?'none':'block';
+ $('#tb').innerHTML=users.sort((a,b)=>(b.lastSeen||0)-(a.lastSeen||0)).map(u=>`<tr><td><b>${esc(u.name)}</b></td><td class="en" dir="ltr" style="text-align:right">${esc(u.username)}</td>
+ <td><div class="en">${u.stats.known}/${TOTAL_PHRASES}</div><div class="bar"><i style="width:${u.stats.known/TOTAL_PHRASES*100}%"></i></div></td>
+ <td><div class="en">${u.stats.plan}/${TOTAL_TASKS}</div><div class="bar"><i style="width:${u.stats.plan/TOTAL_TASKS*100}%"></i></div></td>
+ <td class="en">${u.stats.exams} ${u.stats.best!=null?'('+u.stats.best+'%)':''}</td><td class="en">${u.stats.mistakes}</td><td>${ago(u.lastSeen)}</td>
+ <td><div class="acts"><button class="btn" onclick="rep('${u.id}')">📊 التقرير</button><button class="btn sec" onclick="pw('${u.id}','${esc(u.name)}')">كلمة مرور</button><button class="btn sec" onclick="rp('${u.id}','${esc(u.name)}')">تصفير التقدم</button><button class="btn bad" onclick="del('${u.id}','${esc(u.name)}')">حذف</button></div></td></tr>`).join('')}catch(e){if(TOKEN)msg('#amsg',e.message)}}
+$('#af').onsubmit=async e=>{e.preventDefault();try{await api('admin/users',{method:'POST',body:{name:$('#nn').value.trim(),username:$('#nu').value.trim(),password:$('#np').value}});msg('#amsg','✓ تمت إضافة '+$('#nu').value.trim()+' — ابعتله اسم المستخدم وكلمة المرور',true);$('#af').reset();load()}catch(err){msg('#amsg',err.message)}};
+function modal(title,body,onOk){$('#mt').textContent=title;$('#mb').innerHTML=body;$('#md').classList.add('on');$('#mno').onclick=()=>$('#md').classList.remove('on');$('#mok').onclick=async()=>{try{await onOk();$('#md').classList.remove('on');load()}catch(e){alertIn(e.message)}}}
+function alertIn(t){let d=$('#mb .msg');if(!d){d=document.createElement('div');$('#mb').appendChild(d)}d.className='msg on no';d.textContent=t}
+function del(id,n){modal('حذف '+n+'؟','<p>هيتمسح اليوزر وكل تقدمه نهائيًا. مفيش رجوع.</p>',()=>api('admin/users/'+id,{method:'DELETE'}))}
+function rp(id,n){modal('تصفير تقدم '+n+'؟','<p>هيرجع كل التقدم (العبارات، الخطة، الامتحانات، الأخطاء) للصفر.</p>',()=>api('admin/users/'+id+'/reset-progress',{method:'POST'}))}
+function pw(id,n){modal('كلمة مرور جديدة لـ '+n,'<input id="npw" class="en" dir="ltr" minlength="4" placeholder="new password"><p class="mut" style="font-size:13px">هيتعمل له خروج من كل الأجهزة.</p>',()=>api('admin/users/'+id+'/password',{method:'POST',body:{password:$('#npw').value}}))}
+async function rep(id){try{const j=await api('admin/users/'+id+'/progress');$('#rpt').textContent='📊 تقرير '+j.user.name+' ('+j.user.username+')';$('#rpb').innerHTML=buildReport(j.progress);$('#rpm').classList.add('on')}catch(e){msg('#amsg',e.message)}}
+$('#rpm').onclick=e=>{if(e.target.id==='rpm')$('#rpm').classList.remove('on')};
+if(TOKEN)show().catch(logout);
+</script>
+</body>
+</html>

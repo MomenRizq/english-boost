@@ -19,4 +19,5 @@ jobs:
             cd "${{ secrets.DEPLOY_PATH }}"
             git fetch --all --prune
             git reset --hard origin/main
+            (pm2 reload english-boost --update-env || pm2 restart english-boost --update-env || echo "pm2 app english-boost not found - start it once manually")
             echo "Deployed $(git rev-parse --short HEAD)"

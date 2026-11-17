@@ -108,6 +108,10 @@ textarea{width:100%;min-height:120px}
 .sets{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .sets label{font-weight:700;font-size:14px}
 .score{font-size:54px;font-weight:800;font-family:Inter;color:var(--acc)}
+.uchip{display:flex;align-items:center;gap:8px;background:#ffffff14;border-radius:10px;padding:4px 6px 4px 10px;font-weight:700;font-size:14px}
+.uchip button{border:0;background:#ffffff22;color:#fff;border-radius:7px;padding:3px 9px;font-size:13px}
+#sync{font-size:11px;color:#69db7c}#sync.wait{color:#ffd43b}#sync.err{color:#ff8787}
+.login{max-width:400px;margin:50px auto}.login input{width:100%;margin-bottom:12px}
 .rate{display:flex;align-items:center;gap:6px;font-size:13px;color:#cfcbe0}
 .rate input{width:80px}
 </style>
@@ -116,8 +120,9 @@ textarea{width:100%;min-height:120px}
 <header><div class="hwrap">
  <div class="logo"><b>EN</b> English Boost</div>
  <nav id="nav">
-  <a data-v="home">🏠 الخطة</a><a data-v="units">📚 الدروس</a><a data-v="flash">🃏 البطاقات</a><a data-v="exam">📝 الامتحانات</a><a data-v="build">🧩 ترتيب الجمل</a><a data-v="speak">🎤 المحادثة</a><a data-v="story">📖 قصة الأزمنة</a><a data-v="mistakes">🔁 أخطائي</a>
+  <a data-v="home">🏠 الخطة</a><a data-v="units">📚 الدروس</a><a data-v="flash">🃏 البطاقات</a><a data-v="exam">📝 الامتحانات</a><a data-v="build">🧩 ترتيب الجمل</a><a data-v="speak">🎤 المحادثة</a><a data-v="story">📖 قصة الأزمنة</a><a data-v="mistakes">🔁 أخطائي</a><a data-v="progress">📊 تقدمي</a>
  </nav>
+ <div class="uchip" id="uchip" style="display:none"><span id="uname"></span><span id="sync" title="حالة الحفظ">●</span><button id="logout">خروج</button></div>
  <div class="rate">🔊 السرعة <input type="range" id="rate" min="0.6" max="1.2" step="0.1" value="0.9"></div>
 </div></header>
 <main id="app"></main>
@@ -125,11 +130,26 @@ textarea{width:100%;min-height:120px}
 <div id="pop"></div>
 <div class="toast" id="toast"></div>
 <script src="data.js"></script>
+<script src="report.js"></script>
 <script>
-// ---------- storage ----------
-const LS={get(k,d){try{const v=localStorage.getItem('eb_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('eb_'+k,JSON.stringify(v))}catch(e){}}};
-let ST={known:LS.get('known',{}),plan:LS.get('plan',{}),mist:LS.get('mist',[]),exams:LS.get('exams',[]),drafts:LS.get('drafts',{})};
-function save(){for(const k in ST)LS.set(k,ST[k])}
+// ---------- storage + per-user sync ----------
+let USER=null,MODE='local',PFX='eb_',TOK=null;
+try{TOK=localStorage.getItem('eb_token')}catch(e){}
+const LS={get(k,d){try{const v=localStorage.getItem(PFX+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(PFX+k,JSON.stringify(v))}catch(e){}}};
+const KEYS={known:{},plan:{},mist:[],exams:[],drafts:{},spoken:{},built:0,last:null};
+let ST={};
+function normalize(o){o=o||{};const r={};for(const k in KEYS)r[k]=o[k]!=null?o[k]:JSON.parse(JSON.stringify(KEYS[k]));return r}
+function loadLocal(){const o={};for(const k in KEYS)o[k]=LS.get(k,KEYS[k]);ST=normalize(o)}
+let SYNC_T=null;
+function save(){for(const k in KEYS)LS.set(k,ST[k]);if(MODE==='server'&&USER){setSync('wait');clearTimeout(SYNC_T);SYNC_T=setTimeout(pushProgress,900)}}
+async function api(path,opt={}){const r=await fetch('api/'+path,{method:opt.method||'GET',keepalive:!!opt.keepalive,cache:'no-store',headers:Object.assign({'Content-Type':'application/json'},TOK?{Authorization:'Bearer '+TOK}:{}),body:opt.body?JSON.stringify(opt.body):undefined});
+ let j={};try{j=await r.json()}catch(e){}if(!r.ok){const e=new Error(j.error||('HTTP '+r.status));e.status=r.status;throw e}return j}
+async function pushProgress(){if(MODE!=='server'||!USER)return;try{await api('progress',{method:'PUT',body:{progress:ST}});setSync('ok')}catch(e){setSync('err');if(e.status===401)forceLogout()}}
+function setSync(c){const el=document.getElementById('sync');if(!el)return;el.className=c==='ok'?'':c;el.title=c==='ok'?'تم الحفظ على السيرفر':c==='wait'?'جاري الحفظ…':'فشل الحفظ — هيتعاد'}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&MODE==='server'&&USER){clearTimeout(SYNC_T);try{fetch('api/progress',{method:'PUT',keepalive:true,headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOK},body:JSON.stringify({progress:ST})})}catch(e){}}});
+setInterval(()=>{const el=document.getElementById('sync');if(el&&el.className==='err')pushProgress()},15000);
+function setTok(t){TOK=t;try{t?localStorage.setItem('eb_token',t):localStorage.removeItem('eb_token')}catch(e){}}
+function forceLogout(){setTok(null);USER=null;showLogin()}
 const $=s=>document.querySelector(s);const app=$('#app');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
@@ -157,9 +177,9 @@ document.addEventListener('keydown',e=>{if(!$('#lb').classList.contains('on'))re
 let PARAM={};
 function go(v,param){PARAM=param||{};if(location.hash==='#'+v)render();else location.hash=v;window.scrollTo(0,0)}
 window.addEventListener('hashchange',render);
-function render(){const v=(location.hash.slice(1)||'home');document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',v.startsWith(a.dataset.v)));
+function render(){if(MODE==='server'&&!USER)return showLogin();const v=(location.hash.slice(1)||'home');ST.last={v:v.startsWith('unit-')?'unit':v,l:PARAM.lesson||PARAM.scope||(v.startsWith('unit-')?v.slice(5):''),at:Date.now()};save();document.getElementById('nav').style.display='';document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',v.startsWith(a.dataset.v)));
  if(v.startsWith('unit-'))return viewUnit(v.slice(5));
- ({home:viewHome,units:viewUnits,flash:viewFlash,exam:viewExam,build:viewBuild,speak:viewSpeak,story:viewStory,mistakes:viewMist}[v]||viewHome)()}
+ ({home:viewHome,units:viewUnits,flash:viewFlash,exam:viewExam,build:viewBuild,speak:viewSpeak,story:viewStory,mistakes:viewMist,progress:viewProgress}[v]||viewHome)()}
 document.querySelectorAll('#nav a').forEach(a=>a.onclick=()=>go(a.dataset.v));
 
 // ---------- HOME ----------
@@ -169,7 +189,7 @@ function viewHome(){
  const best=ST.exams.length?Math.max(...ST.exams.map(e=>Math.round(e.s/e.n*100))):0;
  const today=PLAN.find(d=>d.tasks.some((t,i)=>!ST.plan[d.d+'-'+i]))||PLAN[PLAN.length-1];
  let h=`<div class="hero"><div><div class="pill" style="background:#ffffff2a;color:#fff">خطة مكثفة — 12 يوم · 3 وحدات + 5 حزم محادثة</div>
- <h1 style="margin-top:10px">أهلًا مؤمن 👋 جاهز تراجع السيشنز؟</h1>
+ <h1 style="margin-top:10px">أهلًا ${esc(USER?USER.name:'بيك')} 👋 جاهز تراجع السيشنز؟</h1>
  <p style="opacity:.9;margin:0 0 14px">كل المحتوى هنا من شرائح الكورس والملفات اللي حضرتها: ${tot} عبارة مهمة، ${MCQ.length+GAPS.length} سؤال، ${SPEAK.length} بطاقة محادثة بإجابات نموذجية. ركّز على العبارات واستخدمها في جمل.</p>
  <div class="row"><button class="btn" style="background:#fff;color:var(--acc)" onclick="startDay(${today.d})">▶ ابدأ اليوم ${today.d}</button><button class="btn" style="background:#ffffff26" onclick="go('exam',{scope:'all'})">امتحان سريع</button></div></div>
  <div class="grid" style="grid-template-columns:1fr 1fr">
@@ -178,7 +198,7 @@ function viewHome(){
   <div class="card"><div style="color:#ffffffb0">أفضل نتيجة امتحان</div><div class="stat">${best}%</div></div>
   <div class="card"><div style="color:#ffffffb0">أخطاء للمراجعة</div><div class="stat">${ST.mist.length}</div></div>
  </div></div>
- <h2>📅 الخطة المكثفة (يوم بيوم)</h2><p class="mut" style="margin-top:-6px">كل يوم: عبارات ← قواعد ← اختبار ← محادثة. علّم المهمة لما تخلصها (أو تتعلم تلقائيًا لما تفتحها من هنا).</p><div class="card">`;
+ <div class="row" style="justify-content:space-between;align-items:baseline"><h2>📅 الخطة المكثفة (يوم بيوم)</h2><a class="btn sec" onclick="go('progress')" style="cursor:pointer">📊 تقرير تقدمي الكامل</a></div><p class="mut" style="margin-top:-6px">كل يوم: عبارات ← قواعد ← اختبار ← محادثة. علّم المهمة لما تخلصها (أو تتعلم تلقائيًا لما تفتحها من هنا).</p><div class="card">`;
  PLAN.forEach(d=>{const all=d.tasks.every((t,i)=>ST.plan[d.d+'-'+i]);
   h+=`<div class="day ${all?'done':''}"><div class="dnum">${all?'✓':d.d}</div><div style="flex:1"><h3 class="en" dir="ltr" style="text-align:right">${esc(d.t)}</h3><div>`;
   d.tasks.forEach((t,i)=>{const k=d.d+'-'+i,dn=ST.plan[k];h+=`<span class="task ${dn?'done':''}"><input type="checkbox" ${dn?'checked':''} onchange="togTask('${k}',this.checked)"><a onclick="doTask(${d.d},${i})">${esc(t[2])}</a></span>`});
@@ -283,7 +303,7 @@ function viewBuild(){BD.scope=PARAM.scope||BD.scope||'all';newBuild()}
 function newBuild(){const pool=P.filter(p=>inScope(p.l,BD.scope)).map(p=>({s:p.ex,ar:p.ar,l:p.l})).concat(SPEAK.filter(s=>inScope(s.l,BD.scope)&&s.m).flatMap(s=>s.m.split(/(?<=[.!?])\s+/).map(x=>({s:x.trim(),ar:'من الإجابة النموذجية',l:s.l}))))
  .filter(x=>{const n=x.s.split(/\s+/).length;return n>=5&&n<=15});
  const it=pool[Math.random()*pool.length|0];if(!it){app.innerHTML='<div class="empty">لا توجد جمل</div>';return}
- BD.cur=it;BD.words=shuffle(it.s.split(/\s+/).map((w,i)=>({w,i})));BD.pick=[];BD.checked=false;drawBuild()}
+ BD.counted=0;BD.cur=it;BD.words=shuffle(it.s.split(/\s+/).map((w,i)=>({w,i})));BD.pick=[];BD.checked=false;drawBuild()}
 function drawBuild(){const it=BD.cur;
  app.innerHTML=`<h1>🧩 ترتيب الجمل</h1><p class="mut">رتّب الكلمات لتكوين الجملة الصحيحة — يثبت تركيب العبارات في دماغك.</p><div class="sets"><label>النطاق:</label>${scopeSelect('bs',BD.scope)}</div>
  <div class="qbox card"><div class="row" style="justify-content:space-between"><span class="pill">${it.l}</span><span class="mut">${esc(it.ar)}</span></div>
@@ -291,7 +311,7 @@ function drawBuild(){const it=BD.cur;
  <div class="wbank en" dir="ltr">${BD.words.map((x,k)=>`<button class="w ${BD.pick.includes(x)?'used':''}" ${BD.pick.includes(x)?'disabled':''} onclick="BD.pick.push(BD.words[${k}]);drawBuild()">${esc(x.w)}</button>`).join('')}</div>
  <div class="row"><button class="btn" onclick="chkBuild()" ${BD.pick.length<BD.words.length?'disabled':''}>تحقق</button><button class="btn ghost" onclick="BD.pick=[];drawBuild()">مسح</button><button class="btn sec" onclick="newBuild()">جملة أخرى ←</button>${sayBtn(it.s)}</div><div id="bfb"></div></div>`;
  $('#bs').onchange=e=>{BD.scope=e.target.value;newBuild()}}
-function chkBuild(){const a=BD.pick.map(x=>x.w).join(' '),ok=a===BD.cur.s;$('#bfb').innerHTML=`<div class="fb ${ok?'ok':'no'}">${ok?'✓ ممتاز!':'✗ الصحيح:'} <span class="en" dir="ltr">${esc(BD.cur.s)}</span></div>`;if(ok)say(BD.cur.s)}
+function chkBuild(){const a=BD.pick.map(x=>x.w).join(' '),ok=a===BD.cur.s;$('#bfb').innerHTML=`<div class="fb ${ok?'ok':'no'}">${ok?'✓ ممتاز!':'✗ الصحيح:'} <span class="en" dir="ltr">${esc(BD.cur.s)}</span></div>`;if(ok){say(BD.cur.s);if(!BD.counted){BD.counted=1;ST.built=(ST.built||0)+1;save()}}}
 
 // ---------- SPEAK ----------
 let SP={};
@@ -299,7 +319,7 @@ function viewSpeak(){SP.scope=PARAM.scope||SP.scope||'all';SP.list=SPEAK.filter(
 function drawSpeak(){const s=SP.list[SP.i];stopTimer();
  let h=`<h1>🎤 المحادثة</h1><p class="mut">اقرأ السؤال، فكّر 15 ثانية، ثم اتكلم بصوت عالي 60 ثانية مستخدمًا بدايات الجمل. بعدها قارن بالإجابة النموذجية. معادلة الإجابة: <b class="en">Choice → Reason → Example → Contrast → Follow-up question</b></p><div class="sets"><label>النطاق:</label>${scopeSelect('ss',SP.scope)}</div>`;
  if(!s){app.innerHTML=h+'<div class="empty">لا توجد أسئلة هنا</div>';$('#ss').onchange=e=>{PARAM={scope:e.target.value};viewSpeak()};return}
- const key='sp'+SPEAK.indexOf(s);
+ const SI=SPEAK.indexOf(s),key='sp'+SI;SP.cur=SI;
  h+=`<div class="qbox"><div class="row" style="justify-content:space-between"><span class="pill">${s.l} — ${esc(LESSONS[s.l].ar)}</span><span class="mut">${SP.i+1}/${SP.list.length}</span></div>
  <div class="card" style="margin-top:8px"><div class="row" style="align-items:flex-start">${sayBtn(s.q)}<div class="qtxt en" dir="ltr" style="flex:1">${esc(s.q)}</div></div>
  <h3 style="margin-top:14px">🧱 ابدأ جملتك بـ:</h3><div class="chips en" dir="ltr">${s.st.map(t=>`<span class="chip" data-say="${esc(t)}">${esc(t)}</span>`).join('')}</div>
@@ -309,8 +329,8 @@ function drawSpeak(){const s=SP.list[SP.i];stopTimer();
  ${s.m?`<details style="margin-top:14px"><summary class="btn sec" style="display:inline-block">💡 الإجابة النموذجية</summary><div class="model" style="margin-top:10px">${esc(s.m)}</div><button class="btn ghost" style="margin-top:6px" data-say="${esc(s.m)}">🔊 استمع للنموذج</button></details>`:`<div class="tip">لا توجد إجابة نموذجية لهذا السؤال في الملفات — استخدم بدايات الجمل وعبارات الدرس ${s.l}.</div>`}
  </div><div class="row" style="justify-content:space-between;margin-top:12px"><button class="btn ghost" onclick="SP.i=(SP.i-1+SP.list.length)%SP.list.length;drawSpeak()">→ السابق</button><button class="btn ghost" onclick="SP.i=Math.random()*SP.list.length|0;drawSpeak()">🎲 عشوائي</button><button class="btn" onclick="SP.i=(SP.i+1)%SP.list.length;drawSpeak()">التالي ←</button></div></div>`;
  app.innerHTML=h;$('#ss').onchange=e=>{PARAM={scope:e.target.value};viewSpeak()};
- const dr=$('#dr'),wc=()=>{$('#wc').textContent=(dr.value.trim()?dr.value.trim().split(/\s+/).length:0)+' كلمة'};wc();dr.oninput=()=>{ST.drafts[key]=dr.value;save();wc()}}
-let TM=null;function startTimer(){stopTimer();let t=60;$('#tb').textContent='⏹ إيقاف';$('#tb').onclick=()=>{stopTimer();$('#tb').textContent='⏱ ابدأ 60 ثانية';$('#tb').onclick=startTimer};
+ const dr=$('#dr'),wc=()=>{$('#wc').textContent=(dr.value.trim()?dr.value.trim().split(/\s+/).length:0)+' كلمة'};wc();dr.oninput=()=>{ST.drafts[key]=dr.value;if(dr.value.trim().split(/\s+/).length>=15)ST.spoken[SI]=1;save();wc()};const det=document.querySelector('details');if(det)det.ontoggle=()=>{if(det.open){ST.spoken[SI]=1;save()}}}
+let TM=null;function startTimer(){stopTimer();let t=60;if(SP.cur!=null){ST.spoken[SP.cur]=1;save()}$('#tb').textContent='⏹ إيقاف';$('#tb').onclick=()=>{stopTimer();$('#tb').textContent='⏱ ابدأ 60 ثانية';$('#tb').onclick=startTimer};
  TM=setInterval(()=>{t--;const el=$('#tm');if(!el)return stopTimer();el.textContent='0:'+String(t).padStart(2,'0');el.style.color=t<=10?'var(--bad)':'';if(t<=0){stopTimer();el.textContent='✓ خلصت!';toast('أحسنت! قارن بالإجابة النموذجية')}},1000)}
 function stopTimer(){clearInterval(TM)}
 
@@ -335,7 +355,24 @@ function viewMist(){const m=ST.mist;
  ${m.length?`<div class="row" style="margin-bottom:12px"><button class="btn" onclick="go('exam',{retry:shuffle(ST.mist.map(x=>({...x})))})">أعد امتحان الأخطاء (${m.length})</button><button class="btn ghost" onclick="ST.mist=[];save();viewMist()">مسح الكل</button></div>
  <div class="card">${m.map(w=>`<div class="ph">${sayBtn(w.k==='gap'?w.q.replace('___',w.ans[0]):w.q)}<div><span class="pill">${w.l}</span><div class="en" dir="ltr" style="font-weight:700">${esc(w.q)}</div><div class="ar">✓ ${esc(w.k==='mcq'?w.o[w.a]:w.ans.filter(a=>a&&a!=='-').join(' / '))}</div><div class="mut">${esc(w.exp||'')}</div></div></div>`).join('')}</div>`:`<div class="card empty">لا توجد أخطاء مسجلة 👌 — جرّب امتحان.</div>`}`}
 
-render();
+// ---------- PROGRESS ----------
+function viewProgress(){app.innerHTML=`<h1>📊 تقدمي</h1><p class="mut">${USER?'محفوظ على السيرفر باسم <b>'+esc(USER.name)+'</b> — يظهر لك على أي جهاز تدخل منه.':'وضع محلي: التقدم محفوظ في المتصفح ده بس.'}</p>`+buildReport(ST)}
+
+// ---------- LOGIN ----------
+function showLogin(){document.getElementById('nav').style.display='none';document.getElementById('uchip').style.display='none';
+ app.innerHTML=`<div class="card login"><h2 style="margin-top:0">👋 تسجيل الدخول</h2><p class="mut" style="margin-top:-6px">ادخل باسم المستخدم وكلمة المرور اللي أخدتهم من الأدمن.</p>
+ <form id="lgf"><label style="font-weight:700">اسم المستخدم</label><input class="gap en" dir="ltr" id="lu" autocomplete="username" required>
+ <label style="font-weight:700">كلمة المرور</label><input class="gap en" dir="ltr" type="password" id="lp" autocomplete="current-password" required>
+ <button class="btn" style="width:100%">دخول</button></form><div id="lerr"></div></div>`;
+ document.getElementById('lgf').onsubmit=async e=>{e.preventDefault();try{const j=await api('login',{method:'POST',body:{username:document.getElementById('lu').value,password:document.getElementById('lp').value}});setTok(j.token);USER=j.user;await afterLogin()}catch(err){document.getElementById('lerr').innerHTML=`<div class="fb no">${esc(err.message)}</div>`}}}
+async function afterLogin(){PFX='eb_u_'+USER.id+'_';let remote={};try{remote=(await api('progress')).progress||{}}catch(e){if(e.status===401)return forceLogout()}
+ ST=normalize(remote);for(const k in KEYS)LS.set(k,ST[k]);
+ document.getElementById('uchip').style.display='flex';document.getElementById('uname').textContent=USER.name;setSync('ok');render()}
+document.getElementById('logout').onclick=async()=>{clearTimeout(SYNC_T);await pushProgress();try{await api('logout',{method:'POST'})}catch(e){}forceLogout()};
+async function boot(){let ok=false;try{const r=await fetch('api/health',{cache:'no-store'});ok=r.ok&&(await r.json()).ok===true}catch(e){}
+ if(!ok){MODE='local';PFX='eb_';loadLocal();render();return}
+ MODE='server';if(TOK){try{USER=(await api('me')).user;return afterLogin()}catch(e){setTok(null)}}showLogin()}
+boot();
 </script>
 </body>
 </html>
